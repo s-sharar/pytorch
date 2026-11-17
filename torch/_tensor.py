@@ -171,6 +171,16 @@ class Tensor(torch._C.TensorBase):
                         "different type."
                     )
             else:
+                # Copying the storage makes helper tensors, which an active
+                # fake mode turns into fakes that cannot hold a real storage.
+                fake_mode_active = torch._guards.active_fake_mode() is not None
+                if fake_mode_active and not torch._subclasses.fake_tensor.is_fake(self):
+                    raise NotImplementedError(
+                        "copy.deepcopy() of a real tensor is not supported while "
+                        f"FakeTensorMode is active (got a tensor on device {self.device}). "
+                        "Convert it with FakeTensorMode.from_tensor() first, or copy it "
+                        "outside of the mode."
+                    )
                 new_storage = self._typed_storage()._deepcopy(memo)
                 if self.is_quantized:
                     # quantizer_params can be different type based on torch attribute
